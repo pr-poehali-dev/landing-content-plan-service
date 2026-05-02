@@ -523,6 +523,22 @@ const Index = () => {
                 metricLabel: "Заявок из соцсетей",
                 tags: ["Instagram", "Telegram"],
               },
+              {
+                niche: "🏗️ Строительная компания",
+                before: "Нет присутствия в соцсетях, клиенты не доверяют",
+                after: "Экспертный контент об объектах + рост входящих обращений",
+                metric: "+3х",
+                metricLabel: "Входящих обращений",
+                tags: ["ВКонтакте", "Telegram"],
+              },
+              {
+                niche: "🏭 B2B производство",
+                before: "Скучные посты без вовлечения, нет лидов из соцсетей",
+                after: "Контент-стратегия для корпоративных клиентов, кейсы и экспертиза",
+                metric: "+18%",
+                metricLabel: "Корпоративных запросов",
+                tags: ["LinkedIn", "ВКонтакте"],
+              },
             ].map((c, i) => (
               <Reveal key={i} delay={i * 150}>
                 <div className="card-hover rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
