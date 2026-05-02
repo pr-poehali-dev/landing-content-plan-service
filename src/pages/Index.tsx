@@ -1,6 +1,246 @@
 import { useEffect, useRef, useState } from "react";
 import Icon from "@/components/ui/icon";
 
+// ───── CHATBOT ─────
+type Message = { from: "bot" | "user"; text: string };
+type ChatStep = "menu" | "question" | "collect_name" | "collect_contact" | "done";
+
+const BOT_DELAY = 600;
+
+const QUICK_ANSWERS: Record<string, string> = {
+  "💰 Сколько стоит?": "Стартовый тариф — от 3 900 ₽ за контент-план. Полное ведение — от 25 000 ₽/мес. Точную стоимость рассчитаем индивидуально под вашу нишу.",
+  "⏱️ Как быстро?": "Контент-план готовим за 24 часа после брифинга. Полный пакет постов — 3–5 рабочих дней.",
+  "🏗️ Работаете с B2B/строительством?": "Да! B2B, строительство и производство — одно из наших ключевых направлений. Умеем писать экспертный контент для корпоративной аудитории.",
+  "📋 Что входит в услугу?": "Бриф → контент-план с датами и темами → тексты постов → подбор визуала. Всё согласовываем с вами перед публикацией.",
+  "✏️ Можно ли вносить правки?": "Конечно! В каждый тариф включены 2 раунда правок. Дорабатываем до вашего полного одобрения.",
+};
+
+const MENU_OPTIONS = Object.keys(QUICK_ANSWERS);
+
+function ChatWidget() {
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [step, setStep] = useState<ChatStep>("menu");
+  const [input, setInput] = useState("");
+  const [leadName, setLeadName] = useState("");
+  const [showNotif, setShowNotif] = useState(true);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const addBot = (text: string, delay = BOT_DELAY) => {
+    setTimeout(() => {
+      setMessages((prev) => [...prev, { from: "bot", text }]);
+    }, delay);
+  };
+
+  useEffect(() => {
+    if (open && messages.length === 0) {
+      addBot("Привет! 👋 Я помогу ответить на ваши вопросы о контент-маркетинге. Выберите тему:", 300);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  useEffect(() => {
+    if (open) {
+      setShowNotif(false);
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [open]);
+
+  const handleOption = (option: string) => {
+    setMessages((prev) => [...prev, { from: "user", text: option }]);
+    addBot(QUICK_ANSWERS[option]);
+    addBot("Хотите узнать что-то ещё или оставить заявку?", BOT_DELAY + 400);
+    setStep("question");
+  };
+
+  const handleSend = () => {
+    const val = input.trim();
+    if (!val) return;
+    setInput("");
+
+    if (step === "collect_name") {
+      setLeadName(val);
+      setMessages((prev) => [...prev, { from: "user", text: val }]);
+      addBot(`Приятно познакомиться, ${val}! Оставьте телефон или Telegram — наш менеджер свяжется с вами в течение часа.`);
+      setStep("collect_contact");
+      return;
+    }
+
+    if (step === "collect_contact") {
+      setMessages((prev) => [...prev, { from: "user", text: val }]);
+      addBot(`Отлично! Заявка принята. Скоро свяжемся с вами, ${leadName} 🎉`);
+      addBot("Если появятся вопросы — пишите сюда в любое время!", BOT_DELAY + 300);
+      setStep("done");
+      return;
+    }
+
+    setMessages((prev) => [...prev, { from: "user", text: val }]);
+    addBot("Хороший вопрос! Чтобы ответить точнее, лучше пообщаться с нашим менеджером. Оставить контакт?");
+    setStep("question");
+  };
+
+  const startLead = () => {
+    setMessages((prev) => [...prev, { from: "user", text: "Хочу оставить заявку" }]);
+    addBot("Отлично! Как вас зовут?");
+    setStep("collect_name");
+  };
+
+  const goMenu = () => {
+    addBot("Хорошо, выберите интересующую тему:");
+    setStep("menu");
+  };
+
+  return (
+    <>
+      {/* Кнопка чата */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+        {showNotif && !open && (
+          <div
+            className="bg-white rounded-2xl shadow-xl px-4 py-3 text-sm font-medium max-w-[220px] border border-gray-100 animate-fade-up"
+            style={{ color: "var(--navy-dark)" }}
+          >
+            Есть вопросы? Напишите нам 👋
+            <div className="absolute -bottom-2 right-6 w-3 h-3 bg-white border-r border-b border-gray-100 rotate-45" />
+          </div>
+        )}
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+          style={{ background: "linear-gradient(135deg, var(--navy-dark), var(--navy-light))" }}
+        >
+          {open
+            ? <Icon name="X" size={22} className="text-white" />
+            : <Icon name="MessageCircle" size={24} className="text-white" />
+          }
+          {showNotif && !open && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 border-2 border-white" />
+          )}
+        </button>
+      </div>
+
+      {/* Окно чата */}
+      {open && (
+        <div
+          className="fixed bottom-24 right-6 z-50 w-[340px] rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+          style={{ maxHeight: "520px", background: "white", border: "1px solid rgba(0,0,0,0.08)" }}
+        >
+          {/* Шапка */}
+          <div
+            className="px-5 py-4 flex items-center gap-3 flex-shrink-0"
+            style={{ background: "linear-gradient(135deg, var(--navy-dark), var(--navy-light))" }}
+          >
+            <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "rgba(201,162,39,0.25)" }}>
+              <Icon name="Bot" size={18} style={{ color: "var(--gold-light)" }} />
+            </div>
+            <div>
+              <div className="font-semibold text-white text-sm">ContentPro</div>
+              <div className="text-xs text-blue-200 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+                Онлайн · отвечаем быстро
+              </div>
+            </div>
+          </div>
+
+          {/* Сообщения */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ background: "#f8f9fc" }}>
+            {messages.map((m, i) => (
+              <div key={i} className={`flex ${m.from === "user" ? "justify-end" : "justify-start"}`}>
+                <div
+                  className="px-4 py-2.5 rounded-2xl text-sm leading-relaxed max-w-[80%]"
+                  style={
+                    m.from === "user"
+                      ? { background: "linear-gradient(135deg, var(--navy-dark), var(--navy-light))", color: "white", borderBottomRightRadius: "4px" }
+                      : { background: "white", color: "#1a1a2e", border: "1px solid #e5e7eb", borderBottomLeftRadius: "4px" }
+                  }
+                >
+                  {m.text}
+                </div>
+              </div>
+            ))}
+
+            {/* Быстрые кнопки */}
+            {step === "menu" && messages.length > 0 && (
+              <div className="flex flex-col gap-2 pt-1">
+                {MENU_OPTIONS.map((opt) => (
+                  <button
+                    key={opt}
+                    onClick={() => handleOption(opt)}
+                    className="text-left px-4 py-2.5 rounded-xl text-sm font-medium border transition-all hover:shadow-sm"
+                    style={{ background: "white", borderColor: "rgba(201,162,39,0.35)", color: "var(--navy-dark)" }}
+                  >
+                    {opt}
+                  </button>
+                ))}
+                <button
+                  onClick={startLead}
+                  className="text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
+                  style={{ background: "linear-gradient(135deg, var(--gold), var(--gold-light))", color: "var(--navy-dark)" }}
+                >
+                  📩 Оставить заявку
+                </button>
+              </div>
+            )}
+
+            {step === "question" && (
+              <div className="flex flex-col gap-2 pt-1">
+                <button
+                  onClick={startLead}
+                  className="px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
+                  style={{ background: "linear-gradient(135deg, var(--gold), var(--gold-light))", color: "var(--navy-dark)" }}
+                >
+                  📩 Оставить заявку
+                </button>
+                <button
+                  onClick={goMenu}
+                  className="px-4 py-2.5 rounded-xl text-sm font-medium border transition-all"
+                  style={{ background: "white", borderColor: "#e5e7eb", color: "var(--navy-dark)" }}
+                >
+                  ← Другой вопрос
+                </button>
+              </div>
+            )}
+
+            <div ref={bottomRef} />
+          </div>
+
+          {/* Ввод */}
+          {(step === "collect_name" || step === "collect_contact") && (
+            <div className="p-3 border-t border-gray-100 flex gap-2 flex-shrink-0 bg-white">
+              <input
+                ref={inputRef}
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                placeholder={step === "collect_name" ? "Ваше имя…" : "Телефон или Telegram…"}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-yellow-400 text-gray-800 placeholder-gray-400"
+              />
+              <button
+                onClick={handleSend}
+                disabled={!input.trim()}
+                className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all disabled:opacity-40"
+                style={{ background: "linear-gradient(135deg, var(--navy-dark), var(--navy-light))" }}
+              >
+                <Icon name="Send" size={16} className="text-white" />
+              </button>
+            </div>
+          )}
+
+          {step === "done" && (
+            <div className="p-4 border-t border-gray-100 text-center text-sm text-gray-400 bg-white flex-shrink-0">
+              Спасибо! Скоро свяжемся с вами 🎉
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
 const TEAM_IMAGE =
   "https://cdn.poehali.dev/projects/6368137c-f999-4029-8c66-58a65c0863ca/files/c3a6e4b5-cc1f-45e1-b73a-0464861aa1f3.jpg";
 
@@ -1056,6 +1296,9 @@ const Index = () => {
           </Reveal>
         </div>
       </section>
+
+      {/* CHATBOT */}
+      <ChatWidget />
 
       {/* FOOTER */}
       <footer className="py-10 border-t border-gray-100">
