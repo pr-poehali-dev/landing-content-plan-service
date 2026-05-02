@@ -180,6 +180,7 @@ const Index = () => {
               {[
                 "Экономия 30+ часов в месяц",
                 "Посты под ваш Tone of Voice",
+                "B2B, строительство, производство",
                 "Старт от 3 900 ₽",
               ].map((item, i) => (
                 <div key={i} className="flex items-center gap-2 text-blue-100">
